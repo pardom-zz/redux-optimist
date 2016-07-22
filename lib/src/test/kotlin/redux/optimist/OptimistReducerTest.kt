@@ -31,9 +31,9 @@ import kotlin.test.assertEquals
  * limitations under the License.
  */
 
-class OptimistTest : Spek({
+class OptimistReducerTest : Spek({
 
-	describe("Optimist") {
+	describe("OptimistReducer") {
 
 		describe("dispatch") {
 			val scheduler = TestScheduler()
@@ -62,7 +62,7 @@ class OptimistTest : Spek({
 				}
 
 				val store = Store.create(
-						Optimist.create(reducer),
+						OptimistReducer.create(reducer),
 						State(),
 						Middleware.apply(EpicMiddleware.create(epic)))
 
@@ -88,7 +88,7 @@ class OptimistTest : Spek({
 				}
 
 				val store = Store.create(
-						Optimist.create(reducer),
+						OptimistReducer.create(reducer),
 						State(),
 						Middleware.apply(EpicMiddleware.create(epic)))
 

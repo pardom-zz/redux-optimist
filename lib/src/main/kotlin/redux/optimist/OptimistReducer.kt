@@ -1,11 +1,11 @@
 package redux.optimist
 
 import redux.Reducer
-import redux.optimist.Optimist.Action.Meta.Status
-import redux.optimist.Optimist.Action.Meta.Status.FAILURE
-import redux.optimist.Optimist.Action.Meta.Status.PENDING
-import redux.optimist.Optimist.Action.Meta.Status.RESOLVED
-import redux.optimist.Optimist.Action.Meta.Status.SUCCESS
+import redux.optimist.OptimistReducer.Action.Optimist.Status
+import redux.optimist.OptimistReducer.Action.Optimist.Status.FAILURE
+import redux.optimist.OptimistReducer.Action.Optimist.Status.PENDING
+import redux.optimist.OptimistReducer.Action.Optimist.Status.RESOLVED
+import redux.optimist.OptimistReducer.Action.Optimist.Status.SUCCESS
 import java.util.UUID
 
 /*
@@ -24,7 +24,7 @@ import java.util.UUID
  * limitations under the License.
  */
 
-class Optimist<S : Any> : Reducer<S> {
+class OptimistReducer<S : Any> : Reducer<S> {
 
 	private val delegate: Reducer<S>
 
@@ -40,7 +40,7 @@ class Optimist<S : Any> : Reducer<S> {
 
 	override fun reduce(state: S, action: Any): S {
 		if (action is Action) {
-			return when (action.meta.status) {
+			return when (action.optimist.status) {
 				PENDING -> reducePending(state, action)
 				SUCCESS -> reduceSuccess(state, action)
 				FAILURE -> reduceFailure(state, action)
@@ -100,18 +100,18 @@ class Optimist<S : Any> : Reducer<S> {
 
 	interface Action {
 
-		val meta: Meta
+		val optimist: Optimist
 
-		fun copy(meta: Meta): Action
+		fun copy(optimist: Optimist): Action
 
-		fun id() = meta.id
-		fun status() = meta.status
+		fun id() = optimist.id
+		fun status() = optimist.status
 
-		fun success() = copy(meta.copy(status = SUCCESS))
-		fun failure() = copy(meta.copy(status = FAILURE))
-		fun resolved() = copy(meta.copy(status = RESOLVED))
+		fun success() = copy(optimist.copy(status = SUCCESS))
+		fun failure() = copy(optimist.copy(status = FAILURE))
+		fun resolved() = copy(optimist.copy(status = RESOLVED))
 
-		data class Meta(
+		data class Optimist(
 				val id: Any = UUID.randomUUID(),
 				val status: Status = Status.PENDING) {
 
@@ -126,7 +126,7 @@ class Optimist<S : Any> : Reducer<S> {
 
 	companion object {
 
-		fun <S : Any> create(reducer: Reducer<S>): Reducer<S> = Optimist(reducer)
+		fun <S : Any> create(reducer: Reducer<S>): Reducer<S> = OptimistReducer(reducer)
 
 	}
 
