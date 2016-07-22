@@ -40,8 +40,8 @@ class OptimistTest : Spek({
 			val reducer = object : Reducer<State> {
 				override fun reduce(state: State, action: Any): State {
 					return when (action) {
-						is Increment -> if (action.isPending()) state.copy(state.count + 1) else state
-						is Decrement -> if (action.isPending()) state.copy(state.count - 1) else state
+						is Increment -> state.copy(state.count + 1)
+						is Decrement -> state.copy(state.count - 1)
 						else -> state
 					}
 				}
