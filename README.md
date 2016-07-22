@@ -1,2 +1,2 @@
 # redux-optimist-kotlin
-Optimistic UI reducer enhancer for redux-kotlin
+Optimistic UI baseReducer enhancer for redux-kotlin
