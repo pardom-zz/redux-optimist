@@ -79,7 +79,7 @@ class Optimist<S : Any> : Reducer<S> {
 
 	private fun reduceFailure(state: S, action: Action): S {
 		// Remove the failed action
-		actions = actions.filter { it is Action && it.id() == action.id() }
+		actions = actions.filter { it is Action && it.id() != action.id() }
 		// Collect all actions until an unresolved optimistic action is found
 		val resolvedActions = actions.takeWhile { it !is Action || it.status() == RESOLVED }
 		// Remove resolved actions from action queue
