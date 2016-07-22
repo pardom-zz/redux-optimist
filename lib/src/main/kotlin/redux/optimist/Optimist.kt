@@ -106,7 +106,6 @@ class Optimist<S : Any> : Reducer<S> {
 
 		fun id() = meta.id
 		fun status() = meta.status
-		fun isPending() = meta.status == PENDING
 
 		fun success() = copy(meta.copy(status = SUCCESS))
 		fun failure() = copy(meta.copy(status = FAILURE))
