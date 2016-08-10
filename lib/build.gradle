@@ -15,16 +15,26 @@ sourceSets {
 
 dependencies {
 	compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-	compile('com.github.pardom:redux-kotlin:-SNAPSHOT') { changing = true }
+	compile 'com.github.pardom:redux-kotlin:-SNAPSHOT'
 
-	testCompile 'junit:junit:4.11'
+	testCompile 'junit:junit:4.12'
 	testCompile 'com.nhaarman:mockito-kotlin:0.3.1'
-	testCompile 'org.jetbrains.spek:spek:1.0.+'
+	testCompile 'org.jetbrains.spek:spek:1.0.9'
 	testCompile 'org.mockito:mockito-core:2.0.86-beta'
-	testCompile('com.github.pardom:redux-observable-kotlin:-SNAPSHOT') { changing = true }
+	testCompile 'com.github.pardom:redux-observable-kotlin:-SNAPSHOT'
 }
 
-configurations.all {
-	resolutionStrategy.cacheDynamicVersionsFor 5, 'minutes'
-	resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+task sourcesJar(type: Jar, dependsOn: classes) {
+	classifier = 'sources'
+	from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+	classifier = 'javadoc'
+	from javadoc.destinationDir
+}
+
+artifacts {
+	archives sourcesJar
+	archives javadocJar
 }
