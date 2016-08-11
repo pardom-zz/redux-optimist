@@ -1,7 +1,6 @@
 package redux.optimist
 
 import redux.optimist.OptimistReducer.Action
-import redux.optimist.OptimistReducer.Action.Optimist
 
 /*
  * Copyright (C) 2016 Michael Pardo
@@ -23,9 +22,9 @@ class Counter {
 
 	data class State(val count: Int = 0)
 
-	object Actions {
-		data class Increment(override val optimist: Optimist = Optimist()) : Action
-		data class Decrement(override val optimist: Optimist = Optimist()) : Action
+	sealed class Actions : Action() {
+		class Increment() : Actions()
+		class Decrement() : Actions()
 	}
 
 }
