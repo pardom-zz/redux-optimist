@@ -7,6 +7,7 @@ import redux.optimist.OptimistReducer.Action.Optimist.Status.PENDING
 import redux.optimist.OptimistReducer.Action.Optimist.Status.RESOLVED
 import redux.optimist.OptimistReducer.Action.Optimist.Status.SUCCESS
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 
 /*
  * Copyright (C) 2016 Michael Pardo
@@ -40,7 +41,7 @@ class OptimistReducer<S : Any> : Reducer<S> {
 
 	override fun reduce(state: S, action: Any): S {
 		if (action is Action) {
-			return when (action.optimist.status) {
+			return when (action.status()) {
 				PENDING -> reducePending(state, action)
 				SUCCESS -> reduceSuccess(state, action)
 				FAILURE -> reduceFailure(state, action)
@@ -98,27 +99,25 @@ class OptimistReducer<S : Any> : Reducer<S> {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Public classes
 
-	interface Action {
+	abstract class Action {
 
-		val optimist: Optimist
-
-		fun copy(optimist: Optimist): Action
+		private val optimist = Optimist()
 
 		fun id() = optimist.id
-		fun status() = optimist.status
-
-		fun success() = copy(optimist.copy(status = SUCCESS))
-		fun failure() = copy(optimist.copy(status = FAILURE))
-		fun resolved() = copy(optimist.copy(status = RESOLVED))
+		fun status() = optimist.status.get()
+		fun success() = apply { optimist.status.set(SUCCESS) }
+		fun failure() = apply { optimist.status.set(FAILURE) }
+		fun resolved() = apply { optimist.status.set(RESOLVED) }
 
 		data class Optimist(
 				val id: Any = UUID.randomUUID(),
-				val status: Status = Status.PENDING) {
+				val status: AtomicReference<Status> = AtomicReference(Status.PENDING)) {
 
 			enum class Status {
 				PENDING, SUCCESS, FAILURE, RESOLVED
 			}
 		}
+
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
