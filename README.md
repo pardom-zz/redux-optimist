@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/pardom/redux-optimist-kotlin.svg?branch=master)](https://travis-ci.org/pardom/redux-optimist-kotlin)
 [![](https://jitpack.io/v/pardom/redux-optimist-kotlin.svg)](https://jitpack.io/#pardom/redux-optimist-kotlin)
 
 # redux-optimist-kotlin
