@@ -33,74 +33,68 @@ import kotlin.test.assertEquals
 
 class OptimistReducerTest : Spek({
 
-	describe("OptimistReducer") {
+    describe("OptimistReducer") {
 
-		describe("dispatch") {
-			val scheduler = TestScheduler()
-			val reducer = object : Reducer<State> {
-				override fun reduce(state: State, action: Any): State {
-					return when (action) {
-						is Increment -> state.copy(state.count + 1)
-						is Decrement -> state.copy(state.count - 1)
-						else -> state
-					}
-				}
-			}
+        describe("dispatch") {
+            val scheduler = TestScheduler()
+            val reducer = Reducer { state: State, action: Any ->
+                when (action) {
+                    is Increment -> state.copy(state.count + 1)
+                    is Decrement -> state.copy(state.count - 1)
+                    else -> state
+                }
+            }
 
-			it("successful transaction preserves optimistic state") {
-				val epic = object : Epic<State> {
-					override fun map(actions: Observable<out Any>, store: Store<State>): Observable<out Any> {
-						return Observable.merge(
-								actions.ofType(Increment::class.java)
-										.delay(1, TimeUnit.SECONDS, scheduler)
-										.map { it.success() },
-								actions.ofType(Decrement::class.java)
-										.delay(1, TimeUnit.SECONDS, scheduler)
-										.map { it.failure() }
-						)
-					}
-				}
+            it("successful transaction preserves optimistic state") {
+                val epic = Epic { actions: Observable<out Any>, store: Store<State> ->
+                    Observable.merge(
+                            actions.ofType(Increment::class.java)
+                                    .delay(1, SECONDS, scheduler)
+                                    .map { it.success() },
+                            actions.ofType(Decrement::class.java)
+                                    .delay(1, SECONDS, scheduler)
+                                    .map { it.failure() }
+                    )
+                }
 
-				val store = Store.create(
-						OptimistReducer.create(reducer),
-						State(),
-						Middleware.apply(EpicMiddleware.create(epic)))
+                val store = Store.create(
+                        OptimistReducer.create(reducer),
+                        State(),
+                        Middleware.apply(EpicMiddleware.create(epic)))
 
-				store.dispatch(Increment())
-				val oldState = store.getState()
-				scheduler.advanceTimeBy(2, SECONDS)
-				val newState = store.getState()
-				assertEquals(oldState, newState)
-			}
+                store.dispatch(Increment())
+                val oldState = store.getState()
+                scheduler.advanceTimeBy(2, SECONDS)
+                val newState = store.getState()
+                assertEquals(oldState, newState)
+            }
 
-			it("unsuccessful transaction reverts optimistic state") {
-				val epic = object : Epic<State> {
-					override fun map(actions: Observable<out Any>, store: Store<State>): Observable<out Any> {
-						return Observable.merge(
-								actions.ofType(Increment::class.java)
-										.delay(1, TimeUnit.SECONDS, scheduler)
-										.map { it.success() },
-								actions.ofType(Decrement::class.java)
-										.delay(1, TimeUnit.SECONDS, scheduler)
-										.map { it.failure() }
-						)
-					}
-				}
+            it("unsuccessful transaction reverts optimistic state") {
+                val epic = Epic { actions: Observable<out Any>, store: Store<State> ->
+                    Observable.merge(
+                            actions.ofType(Increment::class.java)
+                                    .delay(1, TimeUnit.SECONDS, scheduler)
+                                    .map { it.success() },
+                            actions.ofType(Decrement::class.java)
+                                    .delay(1, TimeUnit.SECONDS, scheduler)
+                                    .map { it.failure() }
+                    )
+                }
 
-				val store = Store.create(
-						OptimistReducer.create(reducer),
-						State(),
-						Middleware.apply(EpicMiddleware.create(epic)))
+                val store = Store.create(
+                        OptimistReducer.create(reducer),
+                        State(),
+                        Middleware.apply(EpicMiddleware.create(epic)))
 
-				val oldState = store.getState()
-				store.dispatch(Decrement())
-				scheduler.advanceTimeBy(2, SECONDS)
-				val newState = store.getState()
-				assertEquals(oldState, newState)
-			}
+                val oldState = store.getState()
+                store.dispatch(Decrement())
+                scheduler.advanceTimeBy(2, SECONDS)
+                val newState = store.getState()
+                assertEquals(oldState, newState)
+            }
 
-		}
+        }
 
-	}
+    }
 
 })
