@@ -1,6 +1,5 @@
 package redux.optimist
 
-import redux.Reducer
 import redux.optimist.OptimistReducer.Action.Optimist.Status
 import redux.optimist.OptimistReducer.Action.Optimist.Status.FAILURE
 import redux.optimist.OptimistReducer.Action.Optimist.Status.PENDING
@@ -25,108 +24,108 @@ import java.util.concurrent.atomic.AtomicReference
  * limitations under the License.
  */
 
-class OptimistReducer<S : Any> : Reducer<S> {
+class OptimistReducer<S : Any> {
 
-	private val delegate: Reducer<S>
+    private val delegate: (S, Any) -> S
 
-	private var actions: List<Any> = emptyList()
-	private var storedState: S? = null
+    private var actions: List<Any> = emptyList()
+    private var storedState: S? = null
 
-	private constructor(reducer: Reducer<S>) {
-		delegate = reducer
-	}
+    private constructor(reducer: (S, Any) -> S) {
+        delegate = reducer
+    }
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Override functions
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Private functions
 
-	override fun reduce(state: S, action: Any): S {
-		if (action is Action) {
-			return when (action.status()) {
-				PENDING -> reducePending(state, action)
-				SUCCESS -> reduceSuccess(state, action)
-				FAILURE -> reduceFailure(state, action)
-				RESOLVED -> delegate.reduce(state, action)
-			}
-		}
-		return delegate.reduce(state, action)
-	}
+    private fun reducePending(state: S, action: Action): S {
+        // Store pre-action state if queue is empty
+        if (actions.isEmpty()) storedState = state
+        // Add action to queue
+        actions += action
+        // Continue with optimistic reduction
+        return delegate(state, action)
+    }
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Private functions
+    private fun reduceSuccess(state: S, action: Action): S {
+        // Find the action by id action and resolve it
+        actions = actions.map { if (it is Action && it.id() == action.id()) it.resolved() else it }
+        // Collect all actions until an unresolved optimistic action is found
+        val resolvedActions = actions.takeWhile { it !is Action || it.status() == RESOLVED }
+        // Remove resolved actions from action queue
+        actions -= resolvedActions
+        // Reduce the stored state with the resolved actions, or set as null if action queue is empty
+        storedState = actions.emptyAsNull()?.fold(storedState) { state, action ->
+            state?.let { delegate(state, action) }
+        }
+        // Optimistic state is still valid, return it.
+        return state
+    }
 
-	private fun reducePending(state: S, action: Action): S {
-		// Store pre-action state if queue is empty
-		if (actions.isEmpty()) storedState = state
-		// Add action to queue
-		actions += action
-		// Continue with optimistic reduction
-		return delegate.reduce(state, action)
-	}
+    private fun reduceFailure(state: S, action: Action): S {
+        // Remove the failed action
+        actions = actions.filter { it is Action && it.id() != action.id() }
+        // Collect all actions until an unresolved optimistic action is found
+        val resolvedActions = actions.takeWhile { it !is Action || it.status() == RESOLVED }
+        // Remove resolved actions from action queue
+        actions -= resolvedActions
+        // Reduce the stored state with the resolved actions
+        val newState = actions.fold(storedState!!) { state, action -> delegate(state, action) }
+        // Clear the stored state if the action queue is empty
+        if (actions.isEmpty()) storedState = null
+        // Return newly calculated state
+        return newState
+    }
 
-	private fun reduceSuccess(state: S, action: Action): S {
-		// Find the action by id action and resolve it
-		actions = actions.map { if (it is Action && it.id() == action.id()) it.resolved() else it }
-		// Collect all actions until an unresolved optimistic action is found
-		val resolvedActions = actions.takeWhile { it !is Action || it.status() == RESOLVED }
-		// Remove resolved actions from action queue
-		actions -= resolvedActions
-		// Reduce the stored state with the resolved actions, or set as null if action queue is empty
-		storedState = actions.emptyAsNull()?.fold(storedState) { state, action ->
-			state?.let { delegate.reduce(state, action) }
-		}
-		// Optimistic state is still valid, return it.
-		return state
-	}
+    // Utility function returns empty collection as null
+    private fun <E> Collection<E>.emptyAsNull(): Collection<E>? = if (isEmpty()) null else this
 
-	private fun reduceFailure(state: S, action: Action): S {
-		// Remove the failed action
-		actions = actions.filter { it is Action && it.id() != action.id() }
-		// Collect all actions until an unresolved optimistic action is found
-		val resolvedActions = actions.takeWhile { it !is Action || it.status() == RESOLVED }
-		// Remove resolved actions from action queue
-		actions -= resolvedActions
-		// Reduce the stored state with the resolved actions
-		val newState = actions.fold(storedState!!) { state, action -> delegate.reduce(state, action) }
-		// Clear the stored state if the action queue is empty
-		if (actions.isEmpty()) storedState = null
-		// Return newly calculated state
-		return newState
-	}
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Public classes
 
-	// Utility function returns empty collection as null
-	private fun <E> Collection<E>.emptyAsNull(): Collection<E>? = if (isEmpty()) null else this
+    abstract class Action {
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Public classes
+        private val optimist = Optimist()
 
-	abstract class Action {
+        fun id() = optimist.id
+        fun status() = optimist.status.get()
+        fun success() = apply { optimist.status.set(SUCCESS) }
+        fun failure() = apply { optimist.status.set(FAILURE) }
+        fun resolved() = apply { optimist.status.set(RESOLVED) }
 
-		private val optimist = Optimist()
+        data class Optimist(
+                val id: Any = UUID.randomUUID(),
+                val status: AtomicReference<Status> = AtomicReference(Status.PENDING)) {
 
-		fun id() = optimist.id
-		fun status() = optimist.status.get()
-		fun success() = apply { optimist.status.set(SUCCESS) }
-		fun failure() = apply { optimist.status.set(FAILURE) }
-		fun resolved() = apply { optimist.status.set(RESOLVED) }
+            enum class Status {
+                PENDING, SUCCESS, FAILURE, RESOLVED
+            }
+        }
 
-		data class Optimist(
-				val id: Any = UUID.randomUUID(),
-				val status: AtomicReference<Status> = AtomicReference(Status.PENDING)) {
+    }
 
-			enum class Status {
-				PENDING, SUCCESS, FAILURE, RESOLVED
-			}
-		}
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Companion
 
-	}
+    companion object {
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Companion
+        fun <S : Any> create(reducer: (S, Any) -> S): (S, Any) -> S {
+            val optimisticReducer = OptimistReducer(reducer)
+            return { state: S, action: Any ->
+                if (action is Action) {
+                    when (action.status()) {
+                        PENDING -> optimisticReducer.reducePending(state, action)
+                        SUCCESS -> optimisticReducer.reduceSuccess(state, action)
+                        FAILURE -> optimisticReducer.reduceFailure(state, action)
+                        RESOLVED -> reducer(state, action)
+                    }
+                }
+                else {
+                    reducer(state, action)
+                }
+            }
+        }
 
-	companion object {
-
-		fun <S : Any> create(reducer: Reducer<S>): Reducer<S> = OptimistReducer(reducer)
-
-	}
+    }
 
 }
