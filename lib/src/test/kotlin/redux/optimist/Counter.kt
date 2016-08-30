@@ -20,11 +20,11 @@ import redux.optimist.OptimistReducer.Action
 
 class Counter {
 
-	data class State(val count: Int = 0)
+    data class State(val count: Int = 0)
 
-	sealed class Actions : Action() {
-		class Increment() : Actions()
-		class Decrement() : Actions()
-	}
+    sealed class Actions : Action() {
+        class Increment() : Actions()
+        class Decrement() : Actions()
+    }
 
 }
