@@ -27,106 +27,106 @@ import java.util.concurrent.atomic.AtomicReference
 
 class OptimistReducer<S : Any> : Reducer<S> {
 
-	private val delegate: Reducer<S>
+    private val delegate: Reducer<S>
 
-	private var actions: List<Any> = emptyList()
-	private var storedState: S? = null
+    private var actions: List<Any> = emptyList()
+    private var storedState: S? = null
 
-	private constructor(reducer: Reducer<S>) {
-		delegate = reducer
-	}
+    private constructor(reducer: Reducer<S>) {
+        delegate = reducer
+    }
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Override functions
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Override functions
 
-	override fun reduce(state: S, action: Any): S {
-		if (action is Action) {
-			return when (action.status()) {
-				PENDING -> reducePending(state, action)
-				SUCCESS -> reduceSuccess(state, action)
-				FAILURE -> reduceFailure(state, action)
-				RESOLVED -> delegate.reduce(state, action)
-			}
-		}
-		return delegate.reduce(state, action)
-	}
+    override fun reduce(state: S, action: Any): S {
+        if (action is Action) {
+            return when (action.status()) {
+                PENDING -> reducePending(state, action)
+                SUCCESS -> reduceSuccess(state, action)
+                FAILURE -> reduceFailure(state, action)
+                RESOLVED -> delegate.reduce(state, action)
+            }
+        }
+        return delegate.reduce(state, action)
+    }
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Private functions
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Private functions
 
-	private fun reducePending(state: S, action: Action): S {
-		// Store pre-action state if queue is empty
-		if (actions.isEmpty()) storedState = state
-		// Add action to queue
-		actions += action
-		// Continue with optimistic reduction
-		return delegate.reduce(state, action)
-	}
+    private fun reducePending(state: S, action: Action): S {
+        // Store pre-action state if queue is empty
+        if (actions.isEmpty()) storedState = state
+        // Add action to queue
+        actions += action
+        // Continue with optimistic reduction
+        return delegate.reduce(state, action)
+    }
 
-	private fun reduceSuccess(state: S, action: Action): S {
-		// Find the action by id action and resolve it
-		actions = actions.map { if (it is Action && it.id() == action.id()) it.resolved() else it }
-		// Collect all actions until an unresolved optimistic action is found
-		val resolvedActions = actions.takeWhile { it !is Action || it.status() == RESOLVED }
-		// Remove resolved actions from action queue
-		actions -= resolvedActions
-		// Reduce the stored state with the resolved actions, or set as null if action queue is empty
-		storedState = actions.emptyAsNull()?.fold(storedState) { state, action ->
-			state?.let { delegate.reduce(state, action) }
-		}
-		// Optimistic state is still valid, return it.
-		return state
-	}
+    private fun reduceSuccess(state: S, action: Action): S {
+        // Find the action by id action and resolve it
+        actions = actions.map { if (it is Action && it.id() == action.id()) it.resolved() else it }
+        // Collect all actions until an unresolved optimistic action is found
+        val resolvedActions = actions.takeWhile { it !is Action || it.status() == RESOLVED }
+        // Remove resolved actions from action queue
+        actions -= resolvedActions
+        // Reduce the stored state with the resolved actions, or set as null if action queue is empty
+        storedState = actions.emptyAsNull()?.fold(storedState) { state, action ->
+            state?.let { delegate.reduce(state, action) }
+        }
+        // Optimistic state is still valid, return it.
+        return state
+    }
 
-	private fun reduceFailure(state: S, action: Action): S {
-		// Remove the failed action
-		actions = actions.filter { it is Action && it.id() != action.id() }
-		// Collect all actions until an unresolved optimistic action is found
-		val resolvedActions = actions.takeWhile { it !is Action || it.status() == RESOLVED }
-		// Remove resolved actions from action queue
-		actions -= resolvedActions
-		// Reduce the stored state with the resolved actions
-		val newState = actions.fold(storedState!!) { state, action -> delegate.reduce(state, action) }
-		// Clear the stored state if the action queue is empty
-		if (actions.isEmpty()) storedState = null
-		// Return newly calculated state
-		return newState
-	}
+    private fun reduceFailure(state: S, action: Action): S {
+        // Remove the failed action
+        actions = actions.filter { it is Action && it.id() != action.id() }
+        // Collect all actions until an unresolved optimistic action is found
+        val resolvedActions = actions.takeWhile { it !is Action || it.status() == RESOLVED }
+        // Remove resolved actions from action queue
+        actions -= resolvedActions
+        // Reduce the stored state with the resolved actions
+        val newState = actions.fold(storedState!!) { state, action -> delegate.reduce(state, action) }
+        // Clear the stored state if the action queue is empty
+        if (actions.isEmpty()) storedState = null
+        // Return newly calculated state
+        return newState
+    }
 
-	// Utility function returns empty collection as null
-	private fun <E> Collection<E>.emptyAsNull(): Collection<E>? = if (isEmpty()) null else this
+    // Utility function returns empty collection as null
+    private fun <E> Collection<E>.emptyAsNull(): Collection<E>? = if (isEmpty()) null else this
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Public classes
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Public classes
 
-	abstract class Action {
+    abstract class Action {
 
-		private val optimist = Optimist()
+        private val optimist = Optimist()
 
-		fun id() = optimist.id
-		fun status() = optimist.status.get()
-		fun success() = apply { optimist.status.set(SUCCESS) }
-		fun failure() = apply { optimist.status.set(FAILURE) }
-		fun resolved() = apply { optimist.status.set(RESOLVED) }
+        fun id() = optimist.id
+        fun status() = optimist.status.get()
+        fun success() = apply { optimist.status.set(SUCCESS) }
+        fun failure() = apply { optimist.status.set(FAILURE) }
+        fun resolved() = apply { optimist.status.set(RESOLVED) }
 
-		data class Optimist(
-				val id: Any = UUID.randomUUID(),
-				val status: AtomicReference<Status> = AtomicReference(Status.PENDING)) {
+        data class Optimist(
+                val id: Any = UUID.randomUUID(),
+                val status: AtomicReference<Status> = AtomicReference(Status.PENDING)) {
 
-			enum class Status {
-				PENDING, SUCCESS, FAILURE, RESOLVED
-			}
-		}
+            enum class Status {
+                PENDING, SUCCESS, FAILURE, RESOLVED
+            }
+        }
 
-	}
+    }
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Companion
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Companion
 
-	companion object {
+    companion object {
 
-		fun <S : Any> create(reducer: Reducer<S>): Reducer<S> = OptimistReducer(reducer)
+        fun <S : Any> create(reducer: Reducer<S>): Reducer<S> = OptimistReducer(reducer)
 
-	}
+    }
 
 }

@@ -15,5 +15,9 @@ repositories {
 ```
 
 ```groovy
-compile 'com.github.pardom:redux-optimist-kotlin:-SNAPSHOT'
+// JVM / Android
+compile 'com.github.pardom.redux-optimist-kotlin:lib:1.0.1'
+
+// JavaScript
+compile 'com.github.pardom.redux-optimist-kotlin:lib:1.0.1'
 ```
