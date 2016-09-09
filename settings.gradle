@@ -1,1 +1,2 @@
-include 'lib'
+include ':lib'
+include ':lib:js'

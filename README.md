@@ -19,5 +19,5 @@ repositories {
 compile 'com.github.pardom.redux-optimist-kotlin:lib:1.0.0'
 
 // JavaScript
-compile 'com.github.pardom.redux-optimist-kotlin:lib:1.0.0'
+compile 'com.github.pardom.redux-optimist-kotlin:js:1.0.0'
 ```
