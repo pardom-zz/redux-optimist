@@ -15,5 +15,5 @@ repositories {
 ```
 
 ```groovy
-compile 'com.github.pardom:redux-optimist-kotlin:1.0.2'
+compile 'com.github.pardom:redux-optimist-kotlin:<version>'
 ```
