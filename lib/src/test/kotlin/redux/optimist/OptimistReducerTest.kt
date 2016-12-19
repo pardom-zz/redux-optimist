@@ -1,9 +1,14 @@
 package redux.optimist
 
 import org.jetbrains.spek.api.Spek
-import redux.Middleware
-import redux.Reducer
-import redux.Store
+import org.jetbrains.spek.api.dsl.describe
+import org.jetbrains.spek.api.dsl.it
+import org.junit.platform.runner.JUnitPlatform
+import org.junit.runner.RunWith
+import redux.api.Reducer
+import redux.api.Store
+import redux.applyMiddleware
+import redux.createStore
 import redux.observable.Epic
 import redux.observable.EpicMiddleware
 import redux.optimist.Counter.Actions.Decrement
@@ -31,6 +36,7 @@ import kotlin.test.assertEquals
  * limitations under the License.
  */
 
+@RunWith(JUnitPlatform::class)
 class OptimistReducerTest : Spek({
 
     describe("OptimistReducer") {
@@ -57,15 +63,15 @@ class OptimistReducerTest : Spek({
                     )
                 }
 
-                val store = Store.create(
-                        OptimistReducer.create(reducer),
+                val store = createStore(
+                        createOptimistReducer(reducer),
                         State(),
-                        Middleware.apply(EpicMiddleware.create(epic)))
+                        applyMiddleware(EpicMiddleware.create(epic)))
 
                 store.dispatch(Increment())
-                val oldState = store.getState()
+                val oldState = store.state
                 scheduler.advanceTimeBy(2, SECONDS)
-                val newState = store.getState()
+                val newState = store.state
                 assertEquals(oldState, newState)
             }
 
@@ -81,15 +87,15 @@ class OptimistReducerTest : Spek({
                     )
                 }
 
-                val store = Store.create(
-                        OptimistReducer.create(reducer),
+                val store = createStore(
+                        createOptimistReducer(reducer),
                         State(),
-                        Middleware.apply(EpicMiddleware.create(epic)))
+                        applyMiddleware(EpicMiddleware.create(epic)))
 
-                val oldState = store.getState()
+                val oldState = store.state
                 store.dispatch(Decrement())
                 scheduler.advanceTimeBy(2, SECONDS)
-                val newState = store.getState()
+                val newState = store.state
                 assertEquals(oldState, newState)
             }
 

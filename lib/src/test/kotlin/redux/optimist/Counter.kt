@@ -1,7 +1,5 @@
 package redux.optimist
 
-import redux.optimist.OptimistReducer.Action
-
 /*
  * Copyright (C) 2016 Michael Pardo
  *
