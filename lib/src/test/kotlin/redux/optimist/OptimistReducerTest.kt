@@ -6,11 +6,11 @@ import org.jetbrains.spek.api.dsl.it
 import org.junit.platform.runner.JUnitPlatform
 import org.junit.runner.RunWith
 import redux.api.Reducer
-import redux.api.Store
 import redux.applyMiddleware
 import redux.createStore
 import redux.observable.Epic
-import redux.observable.EpicMiddleware
+import redux.observable.createEpicMiddleware
+import redux.optimist.Action.Optimist.Status.PENDING
 import redux.optimist.Counter.Actions.Decrement
 import redux.optimist.Counter.Actions.Increment
 import redux.optimist.Counter.State
@@ -43,7 +43,7 @@ class OptimistReducerTest : Spek({
 
         describe("dispatch") {
             val scheduler = TestScheduler()
-            val reducer = Reducer { state: State, action: Any ->
+            val reducer = Reducer<State> { state, action ->
                 when (action) {
                     is Increment -> state.copy(state.count + 1)
                     is Decrement -> state.copy(state.count - 1)
@@ -52,21 +52,24 @@ class OptimistReducerTest : Spek({
             }
 
             it("successful transaction preserves optimistic state") {
-                val epic = Epic { actions: Observable<out Any>, store: Store<State> ->
+                val epic = Epic<State> { actions, store ->
                     Observable.merge(
-                            actions.ofType(Increment::class.java)
-                                    .delay(1, SECONDS, scheduler)
-                                    .map { it.success() },
-                            actions.ofType(Decrement::class.java)
-                                    .delay(1, SECONDS, scheduler)
-                                    .map { it.failure() }
+                        actions.ofType(Increment::class.java)
+                            .filter { it.status() == PENDING }
+                            .delay(1, SECONDS, scheduler)
+                            .map { it.success() },
+                        actions.ofType(Decrement::class.java)
+                            .filter { it.status() == PENDING }
+                            .delay(1, SECONDS, scheduler)
+                            .map { it.failure() }
                     )
                 }
 
                 val store = createStore(
-                        createOptimistReducer(reducer),
-                        State(),
-                        applyMiddleware(EpicMiddleware.create(epic)))
+                    createOptimistReducer(reducer),
+                    State(),
+                    applyMiddleware(createEpicMiddleware(epic))
+                )
 
                 store.dispatch(Increment())
                 val oldState = store.state
@@ -76,21 +79,24 @@ class OptimistReducerTest : Spek({
             }
 
             it("unsuccessful transaction reverts optimistic state") {
-                val epic = Epic { actions: Observable<out Any>, store: Store<State> ->
+                val epic = Epic<State> { actions, store ->
                     Observable.merge(
-                            actions.ofType(Increment::class.java)
-                                    .delay(1, TimeUnit.SECONDS, scheduler)
-                                    .map { it.success() },
-                            actions.ofType(Decrement::class.java)
-                                    .delay(1, TimeUnit.SECONDS, scheduler)
-                                    .map { it.failure() }
+                        actions.ofType(Increment::class.java)
+                            .filter { it.status() == PENDING }
+                            .delay(1, TimeUnit.SECONDS, scheduler)
+                            .map { it.success() },
+                        actions.ofType(Decrement::class.java)
+                            .filter { it.status() == PENDING }
+                            .delay(1, TimeUnit.SECONDS, scheduler)
+                            .map { it.failure() }
                     )
                 }
 
                 val store = createStore(
-                        createOptimistReducer(reducer),
-                        State(),
-                        applyMiddleware(EpicMiddleware.create(epic)))
+                    createOptimistReducer(reducer),
+                    State(),
+                    applyMiddleware(createEpicMiddleware(epic))
+                )
 
                 val oldState = store.state
                 store.dispatch(Decrement())

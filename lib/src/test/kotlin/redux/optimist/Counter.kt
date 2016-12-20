@@ -21,6 +21,9 @@ class Counter {
     data class State(val count: Int = 0)
 
     sealed class Actions : Action() {
+
+        override fun toString() = "${javaClass.simpleName!!}(${status().name})"
+
         class Increment() : Actions()
         class Decrement() : Actions()
     }

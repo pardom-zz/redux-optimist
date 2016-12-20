@@ -21,9 +21,10 @@ import java.util.Collections.emptyList
  */
 
 fun <S : Any> createOptimistReducer(reducer: Reducer<S>): Reducer<S> {
+    var actions: List<Any> = emptyList()
+    var storedState: S? = null
+
     return Reducer { state, action ->
-        var actions: List<Any> = emptyList()
-        var storedState: S? = null
 
         fun <E> Collection<E>.emptyAsNull(): Collection<E>? = if (isEmpty()) null else this
 
